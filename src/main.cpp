@@ -1,5 +1,6 @@
-#include <filesystem>
 #include <iostream>
+
+#include "backupper.h"
 
 int main(int argc, char *argv[])
 {
@@ -12,8 +13,8 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	std::filesystem::path hotDir = argv[1];
-	std::filesystem::path bakDir = argv[2];
+	std::filesystem::path hotDir(argv[1]);
+	std::filesystem::path bakDir(argv[2]);
 
 	if (!std::filesystem::is_directory(hotDir))
 	{
@@ -26,6 +27,12 @@ int main(int argc, char *argv[])
 		std::cerr << "Backup folder path does not refer to directory." << std::endl;
 		return -1;
 	}
+
+	// start backupper
+	Backupper backupper(hotDir, bakDir);
+
+	// wait for input
+	std::getchar();
 
 	return 0;
 }
