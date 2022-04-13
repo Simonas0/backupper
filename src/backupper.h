@@ -17,35 +17,27 @@ class Backupper
 
 	struct Operation
 	{
+		char *path;
 		Action action;
-		std::filesystem::path path;
 	};
 
 	struct File
 	{
-		std::filesystem::path path;
+		char *path;
 		std::time_t lastMod;
 	};
 
-	std::filesystem::path hotDir;
-	std::filesystem::path bakDir;
+	char *hotDir;
+	char *bakDir;
 
-	std::atomic<bool> stopFlag = false;
-	std::future<void> mainFut;
+	int intfd;
 
-	std::map<std::filesystem::file_time_type, Operation> pending;
+	std::future<void> watcherFut;
 
-	std::vector<std::filesystem::path> inUse;
-	std::mutex inUse_mutex;
-
-	// last known modify time of each hot file
-	std::map<std::string, std::filesystem::file_time_type> hotFiles;
-
-	void removeFile(std::filesystem::path path);
-	void backupFile(std::filesystem::path path);
+	std::vector<std::future<void>> futures;
 
 public:
-	Backupper(std::filesystem::path hotDir, std::filesystem::path bakDir);
+	Backupper(char *hotDir, char *bakDir);
 	~Backupper();
 };
 

@@ -1,68 +1,120 @@
 #include <iostream>
+#include <errno.h>
 #include <string.h>
-#include <thread>
+#include <unistd.h>
+#include <sys/inotify.h>
+#include <sys/epoll.h>
+#include <sys/eventfd.h>
 
 #include "backupper.h"
 #include "debug.h"
 
-#define DEL_PFX "delete_"
 #define BAK_EXT ".bak"
-#define CHK_INT std::chrono::seconds(1)
+#define BUF_SIZE 4096
+#define DEL_PFX "delete_"
+#define MAX_EVENTS 10
 
-Backupper::Backupper(std::filesystem::path hotDir, std::filesystem::path bakDir)
+Backupper::Backupper(char *hotDir, char *bakDir)
 {
 	DEBUG_MSG("Starting backupper");
 
 	this->hotDir = hotDir;
 	this->bakDir = bakDir;
 
-	mainFut = std::async(
-		[&]()
+	intfd = eventfd(0, 0);
+
+	watcherFut = std::async(
+		[](char *hotDir, char *bakDir, int *intfd)
 		{
-			while (!stopFlag)
+			epoll_event hotEvent, intEvent, events[MAX_EVENTS];
+
+			hotEvent.events = intEvent.events = EPOLLIN | EPOLLET;
+			hotEvent.data.fd = inotify_init1(IN_NONBLOCK);
+			intEvent.data.fd = *intfd;
+
+			inotify_add_watch(hotEvent.data.fd, hotDir, IN_CLOSE_WRITE | IN_MOVED_TO);
+
+			auto epfd = epoll_create1(0);
+			epoll_ctl(epfd, EPOLL_CTL_ADD, hotEvent.data.fd, &hotEvent);
+			epoll_ctl(epfd, EPOLL_CTL_ADD, intEvent.data.fd, &intEvent);
+
+			while (true)
 			{
-				for (auto entry : std::filesystem::directory_iterator(hotDir))
+				auto nfds = epoll_wait(epfd, events, MAX_EVENTS, -1);
+
+				bool hotAvailForRead = false, intAvailForRead = false;
+				for (auto i = 0; i < nfds; ++i)
 				{
-					std::string filename = entry.path().filename().string();
+					hotAvailForRead = hotAvailForRead || events[i].data.fd == hotEvent.data.fd;
+					intAvailForRead = intAvailForRead || events[i].data.fd == intEvent.data.fd;
+				}
 
-					if (hotFiles.find(filename)->second != entry.last_write_time() && std::filesystem::is_regular_file(entry))
+				char buf[BUF_SIZE];
+				ssize_t len;
+
+				if (hotAvailForRead)
+				{
+					while (true)
 					{
-						hotFiles.erase(filename);
-						hotFiles.insert(std::pair(filename, entry.last_write_time()));
+						len = read(hotEvent.data.fd, buf, sizeof(buf));
 
-						if (filename.rfind(DEL_PFX, 0) == 0)
+						if (len >= 0)
 						{
-							DEBUG_MSG("Adding " << hotDir.string() << filename << " and " << bakDir.string() << filename.substr(strlen(DEL_PFX)) + BAK_EXT << " to pending for deletion");
+							for (
+								auto *event = (inotify_event *)buf;
+								event < (inotify_event *)(buf + len);
+								event = (inotify_event *)((char *)event + sizeof(inotify_event) + event->len))
+							{
+								if (strncmp(event->name, DEL_PFX, strlen(DEL_PFX)) == 0)
+								{
+									DEBUG_MSG("Deleting " << std::string(hotDir).append(event->name) << " and "
+														  << std::string(
+																 std::string(bakDir)
+																	 .append(&event->name[strlen(DEL_PFX)]))
+																 .append(BAK_EXT));
 
-							pending.insert(std::pair(entry.last_write_time(), Operation{.action = deleteHot, .path = filename}));
-							pending.insert(std::pair(entry.last_write_time(), Operation{.action = deleteBck, .path = filename.substr(strlen(DEL_PFX)) + BAK_EXT}));
+									std::filesystem::remove(std::string(hotDir).append(event->name));
+									std::filesystem::remove(std::string(
+																std::string(bakDir)
+																	.append(&event->name[strlen(DEL_PFX)]))
+																.append(BAK_EXT));
+								}
+								else
+								{
+									DEBUG_MSG("Backing up " << std::string(hotDir).append(event->name) << " to "
+															<< std::string(bakDir).append(event->name).append(BAK_EXT));
+									std::filesystem::copy(std::string(hotDir).append(event->name),
+														  std::string(bakDir).append(event->name).append(BAK_EXT));
+								}
+							}
 						}
 						else
 						{
-							DEBUG_MSG("Adding " << hotDir.string() << filename << " to pending for backing up");
-
-							pending.insert(std::pair(entry.last_write_time(), Operation{.action = Action::backup, .path = filename}));
+							if (errno == EAGAIN || errno == EWOULDBLOCK)
+							{
+								break;
+							}
 						}
 					}
 				}
-				std::this_thread::sleep_for(CHK_INT);
+
+				if (intAvailForRead)
+				{
+					len = read(intEvent.data.fd, buf, sizeof(buf));
+					if (len > 0)
+					{
+						break;
+					}
+				}
 			}
-		});
+		},
+		this->hotDir, this->bakDir, &intfd);
 }
 
 Backupper::~Backupper()
 {
 	DEBUG_MSG("Stopping backupper");
-	stopFlag = true;
-	mainFut.get();
-}
-
-void Backupper::removeFile(std::filesystem::path path)
-{
-	DEBUG_MSG("Deleting " << path);
-}
-
-void Backupper::backupFile(std::filesystem::path path)
-{
-	DEBUG_MSG("Copying " << path << " to " << bakDir / (path.filename().string() + BAK_EXT));
+	// any writing to intfd will stop backupper
+	write(intfd, this, 8);
+	watcherFut.get();
 }

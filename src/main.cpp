@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
 	}
 
 	// start backupper
-	Backupper backupper(hotDir, bakDir);
+	Backupper backupper(argv[1], argv[2]);
 
 	// wait for input
 	std::getchar();
