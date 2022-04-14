@@ -1,4 +1,6 @@
 #include <iostream>
+#include <string>
+
 #include <errno.h>
 #include <string.h>
 #include <unistd.h>
@@ -14,23 +16,23 @@
 #define DEL_PFX "delete_"
 #define MAX_EVENTS 10
 
-Backupper::Backupper(char *hotDir, char *bakDir)
+Backupper::Backupper(char *hot, char *bak)
 {
 	DEBUG_MSG("Starting backupper");
 
-	this->hotDir = hotDir;
-	this->bakDir = bakDir;
+	hotDir = hot;
+	bakDir = bak;
 
 	intfd = eventfd(0, 0);
 
 	watcherFut = std::async(
-		[](char *hotDir, char *bakDir, int *intfd)
+		[&]()
 		{
 			epoll_event hotEvent, intEvent, events[MAX_EVENTS];
 
 			hotEvent.events = intEvent.events = EPOLLIN | EPOLLET;
 			hotEvent.data.fd = inotify_init1(IN_NONBLOCK);
-			intEvent.data.fd = *intfd;
+			intEvent.data.fd = intfd;
 
 			inotify_add_watch(hotEvent.data.fd, hotDir, IN_CLOSE_WRITE | IN_MOVED_TO);
 
@@ -67,24 +69,17 @@ Backupper::Backupper(char *hotDir, char *bakDir)
 							{
 								if (strncmp(event->name, DEL_PFX, strlen(DEL_PFX)) == 0)
 								{
-									DEBUG_MSG("Deleting " << std::string(hotDir).append(event->name) << " and "
-														  << std::string(
-																 std::string(bakDir)
-																	 .append(&event->name[strlen(DEL_PFX)]))
-																 .append(BAK_EXT));
 
-									std::filesystem::remove(std::string(hotDir).append(event->name));
-									std::filesystem::remove(std::string(
-																std::string(bakDir)
-																	.append(&event->name[strlen(DEL_PFX)]))
-																.append(BAK_EXT));
+									remove(&std::string(hotDir).append(event->name));
+									remove(
+										&std::string(bakDir)
+											 .append(&event->name[strlen(DEL_PFX)])
+											 .append(BAK_EXT));
 								}
 								else
 								{
-									DEBUG_MSG("Backing up " << std::string(hotDir).append(event->name) << " to "
-															<< std::string(bakDir).append(event->name).append(BAK_EXT));
-									std::filesystem::copy(std::string(hotDir).append(event->name),
-														  std::string(bakDir).append(event->name).append(BAK_EXT));
+									copy(&std::string(hotDir).append(event->name),
+										 &std::string(bakDir).append(event->name).append(BAK_EXT));
 								}
 							}
 						}
@@ -107,14 +102,40 @@ Backupper::Backupper(char *hotDir, char *bakDir)
 					}
 				}
 			}
-		},
-		this->hotDir, this->bakDir, &intfd);
+		});
 }
 
 Backupper::~Backupper()
 {
 	DEBUG_MSG("Stopping backupper");
 	// any writing to intfd will stop backupper
-	write(intfd, this, 8);
+	write(intfd, "whatever", 8);
 	watcherFut.get();
+}
+
+void Backupper::remove(std::string *path)
+{
+	DEBUG_MSG("Deleting " << *path);
+
+	futures.push_back(
+		std::async([](Logger *logger, std::string path)
+				   {
+					   if (std::filesystem::remove(path))
+					   {
+						   (*logger).log(&path, delete_);
+						   } },
+				   &logger, *path));
+}
+
+void Backupper::copy(std::string *from, std::string *to)
+{
+	DEBUG_MSG("Backing up " << *from << " to " << *to);
+
+	futures.push_back(
+		std::async([](Logger *logger, std::string from, std::string to)
+				   {
+					   bool existed = std::filesystem::exists(to);
+					   std::filesystem::copy(from, to, std::filesystem::copy_options::overwrite_existing);
+					   (*logger).log(&to, existed ? Action::alter : Action::create); },
+				   &logger, *from, *to));
 }

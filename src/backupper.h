@@ -6,20 +6,11 @@
 #include <map>
 #include <vector>
 
+#include "logger.h"
+
 class Backupper
 {
-	enum Action
-	{
-		backup,
-		deleteHot,
-		deleteBck
-	};
-
-	struct Operation
-	{
-		char *path;
-		Action action;
-	};
+	Logger logger;
 
 	struct File
 	{
@@ -33,11 +24,13 @@ class Backupper
 	int intfd;
 
 	std::future<void> watcherFut;
-
 	std::vector<std::future<void>> futures;
 
+	void remove(std::string *path);
+	void copy(std::string *from, std::string *to);
+
 public:
-	Backupper(char *hotDir, char *bakDir);
+	Backupper(char *hot, char *bak);
 	~Backupper();
 };
 
