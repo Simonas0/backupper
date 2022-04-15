@@ -6,17 +6,14 @@
 
 #include "cli.h"
 
+#define FILE_NAME "filters"
 #define DEFAULT_MASK ALTERED | BACKEDUP | CREATED | DELETED
 #define BOLD "\e[1m"
 #define NORMAL "\e[0m"
 
 Cli::Cli(Logger *logger)
 {
-    uint8_t mask = DEFAULT_MASK;
-    std::regex regex;
-    std::string regexStr;
-    char fromStr[32], toStr[32];
-    time_t from, to;
+    loadState();
 
     while (true)
     {
@@ -144,9 +141,9 @@ Cli::Cli(Logger *logger)
             case 'l':
                 break;
             case 'q':
+                saveState();
                 return;
             default:
-                std::cout << "This key does nothing. Try another one" << std::endl;
                 continue;
             }
             break;
@@ -162,4 +159,101 @@ time_t Cli::getTime(char *str)
         return -1;
     }
     return mktime(&tm);
+}
+
+void Cli::saveState()
+{
+    std::ofstream file(FILE_NAME);
+
+    if ((mask & ALTERED) == ALTERED)
+    {
+        file << "ALTERED" << std::endl;
+    }
+    if ((mask & BACKEDUP) == BACKEDUP)
+    {
+        file << "BACKEDUP" << std::endl;
+    }
+    if ((mask & CREATED) == CREATED)
+    {
+        file << "CREATED" << std::endl;
+    }
+    if ((mask & DELETED) == DELETED)
+    {
+        file << "DELETED" << std::endl;
+    }
+    if ((mask & REGEX) == REGEX)
+    {
+        file << "REGEX " << regexStr << std::endl;
+    }
+    if ((mask & FROM) == FROM)
+    {
+        file << "FROM " << fromStr << std::endl;
+    }
+    if ((mask & TO) == TO)
+    {
+        file << "TO " << toStr << std::endl;
+    }
+}
+
+void Cli::loadState()
+{
+    std::ifstream file(FILE_NAME);
+
+    std::string line;
+
+    while (std::getline(file, line))
+    {
+        if (line.rfind("ALTERED", 0) == 0)
+        {
+            mask |= ALTERED;
+        }
+        else if (line.rfind("BACKEDUP", 0) == 0)
+        {
+            mask |= BACKEDUP;
+        }
+        else if (line.rfind("CREATED", 0) == 0)
+        {
+            mask |= CREATED;
+        }
+        else if (line.rfind("DELETED", 0) == 0)
+        {
+            mask |= DELETED;
+        }
+        else if (line.rfind("REGEX", 0) == 0)
+        {
+            mask |= REGEX;
+            regexStr = line.substr(strlen("REGEX") + 1);
+            try
+            {
+                regex = std::regex(regexStr);
+            }
+            catch (const std::exception &e)
+            {
+                mask |= REGEX;
+                regexStr = "";
+            }
+        }
+        else if (line.rfind("FROM", 0) == 0)
+        {
+            mask |= FROM;
+            strcpy(fromStr, line.substr(strlen("FROM") + 1).c_str());
+            from = getTime(fromStr);
+            if (from == -1)
+            {
+                mask |= FROM;
+                strcpy(fromStr, "");
+            }
+        }
+        else if (line.rfind("TO", 0) == 0)
+        {
+            mask |= TO;
+            strcpy(toStr, line.substr(strlen("TO") + 1).c_str());
+            to = getTime(toStr);
+            if (to == -1)
+            {
+                mask |= TO;
+                strcpy(toStr, "");
+            }
+        }
+    }
 }

@@ -1,3 +1,4 @@
+#include <chrono>
 #include <string>
 
 #include <errno.h>
@@ -14,6 +15,8 @@
 #define BUF_SIZE 4096
 #define DEL_PFX "delete_"
 #define MAX_EVENTS 10
+
+using namespace std::chrono_literals;
 
 Backupper::Backupper(char *hot, char *bak, Logger *logger)
 {
@@ -101,6 +104,25 @@ Backupper::Backupper(char *hot, char *bak, Logger *logger)
 						break;
 					}
 				}
+
+				// clean up futures periodically
+				for (auto future = futures.begin(); future != futures.end();)
+				{
+					if (future->wait_for(0s) == std::future_status::ready)
+					{
+						future = futures.erase(future);
+					}
+					else
+					{
+						++future;
+					}
+				}
+			}
+
+			// make sure all asynchronous operations finished before exiting
+			for (auto future = futures.begin(); future != futures.end(); ++future)
+			{
+				future->get();
 			}
 		});
 }
