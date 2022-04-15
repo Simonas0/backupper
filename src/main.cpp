@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "backupper.h"
+#include "cli.h"
 
 int main(int argc, char *argv[])
 {
@@ -28,11 +29,14 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	// start backupper
-	Backupper backupper(argv[1], argv[2]);
+	// start logger
+	Logger logger;
 
-	// wait for input
-	std::getchar();
+	// start backupper
+	Backupper backupper(argv[1], argv[2], &logger);
+
+	// start cli
+	Cli cli(&logger);
 
 	return 0;
 }

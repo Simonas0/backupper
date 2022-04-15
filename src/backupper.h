@@ -10,7 +10,7 @@
 
 class Backupper
 {
-	Logger logger;
+	Logger *logger;
 
 	struct File
 	{
@@ -30,7 +30,7 @@ class Backupper
 	void copy(std::string *from, std::string *to);
 
 public:
-	Backupper(char *hot, char *bak);
+	Backupper(char *hot, char *bak, Logger *logger);
 	~Backupper();
 };
 

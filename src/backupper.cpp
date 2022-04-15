@@ -1,4 +1,3 @@
-#include <iostream>
 #include <string>
 
 #include <errno.h>
@@ -16,12 +15,13 @@
 #define DEL_PFX "delete_"
 #define MAX_EVENTS 10
 
-Backupper::Backupper(char *hot, char *bak)
+Backupper::Backupper(char *hot, char *bak, Logger *logger)
 {
 	DEBUG_MSG("Starting backupper");
 
 	hotDir = hot;
 	bakDir = bak;
+	this->logger = logger;
 
 	intfd = eventfd(0, 0);
 
@@ -124,7 +124,7 @@ void Backupper::remove(std::string *path)
 					   {
 						   (*logger).log(&path, delete_);
 						   } },
-				   &logger, *path));
+				   logger, *path));
 }
 
 void Backupper::copy(std::string *from, std::string *to)
@@ -137,5 +137,5 @@ void Backupper::copy(std::string *from, std::string *to)
 					   bool existed = std::filesystem::exists(to);
 					   std::filesystem::copy(from, to, std::filesystem::copy_options::overwrite_existing);
 					   (*logger).log(&to, existed ? Action::alter : Action::create); },
-				   &logger, *from, *to));
+				   logger, *from, *to));
 }
