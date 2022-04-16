@@ -1,9 +1,8 @@
-#include <ctime>
-#include <iomanip>
-#include <sstream>
+#include <iostream>
 
 #include "debug.h"
 #include "logger.h"
+#include "time.h"
 
 #define FILE_NAME "log"
 
@@ -24,7 +23,9 @@ void Logger::log(std::string *path, Action action)
     logFileMutex.unlock();
 }
 
-void Logger::printLog(uint8_t mask, std::regex regex, time_t from, time_t to)
+void Logger::printLog(uint8_t mask, std::regex regex,
+                      std::chrono::system_clock::time_point from,
+                      std::chrono::system_clock::time_point to)
 {
     std::fstream logFile(FILE_NAME);
     std::string line;
@@ -33,15 +34,11 @@ void Logger::printLog(uint8_t mask, std::regex regex, time_t from, time_t to)
 
     while (std::getline(logFile, line))
     {
-        tm tm;
         auto idx = line.find(' ');
         auto timeStr = line.substr(0, idx++);
         auto action = line.at(idx);
         auto name = line.substr(line.rfind('/') + 1);
-        auto time = mktime(&tm);
-
-        std::istringstream ss(timeStr);
-        ss >> std::get_time(&tm, "%FT%TZ");
+        auto time = Time::stringToTime(&timeStr);
 
         switch (action)
         {

@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "cli.h"
+#include "time.h"
 
 #define FILE_NAME "filters"
 #define DEFAULT_MASK ALTERED | BACKEDUP | CREATED | DELETED
@@ -23,19 +24,19 @@ Cli::Cli(Logger *logger)
         // prepare displayed variables
         if ((mask & FROM) == FROM)
         {
-            strftime(fromStr, sizeof(fromStr), "%FT%TZ", std::gmtime(&from));
+            fromStr = Time::timeToString(&from);
         }
         else
         {
-            strcpy(fromStr, "time");
+            fromStr = "time";
         }
         if ((mask & TO) == TO)
         {
-            strftime(toStr, sizeof(toStr), "%FT%TZ", std::gmtime(&to));
+            toStr = Time::timeToString(&to);
         }
         else
         {
-            strcpy(toStr, "time");
+            toStr = "time";
         }
 
         // print out commands
@@ -102,12 +103,15 @@ Cli::Cli(Logger *logger)
                 {
                     while (true)
                     {
-                        std::cout << "Enter from-time (UTC) in ISO format (2022-04-14T15:12:24Z): ";
+                        std::cout << "Enter to-time (UTC) in ISO format (2022-04-14T15:12:24Z): ";
                         std::cin >> fromStr;
-                        from = getTime(fromStr);
-                        if (from == -1)
+                        try
                         {
-                            std::cout << "Time could not be parsed" << std::endl;
+                            from = Time::stringToTime(&fromStr);
+                        }
+                        catch (std::exception &e)
+                        {
+                            std::cout << e.what() << std::endl;
                             continue;
                         }
                         break;
@@ -122,10 +126,13 @@ Cli::Cli(Logger *logger)
                     {
                         std::cout << "Enter to-time (UTC) in ISO format (2022-04-14T15:12:24Z): ";
                         std::cin >> toStr;
-                        to = getTime(toStr);
-                        if (to == -1)
+                        try
                         {
-                            std::cout << "Time could not be parsed" << std::endl;
+                            to = Time::stringToTime(&toStr);
+                        }
+                        catch (std::exception &e)
+                        {
+                            std::cout << e.what() << std::endl;
                             continue;
                         }
                         break;
@@ -135,8 +142,7 @@ Cli::Cli(Logger *logger)
             case 's':
                 mask = DEFAULT_MASK;
                 regexStr = "";
-                strcpy(fromStr, "time");
-                strcpy(toStr, "time");
+                fromStr = toStr = "time";
                 break;
             case 'l':
                 break;
@@ -149,16 +155,6 @@ Cli::Cli(Logger *logger)
             break;
         }
     }
-}
-
-time_t Cli::getTime(char *str)
-{
-    std::tm tm;
-    if (strptime(str, "%FT%TZ", &tm) == 0)
-    {
-        return -1;
-    }
-    return mktime(&tm);
 }
 
 void Cli::saveState()
@@ -236,23 +232,29 @@ void Cli::loadState()
         else if (line.rfind("FROM", 0) == 0)
         {
             mask |= FROM;
-            strcpy(fromStr, line.substr(strlen("FROM") + 1).c_str());
-            from = getTime(fromStr);
-            if (from == -1)
+            fromStr = line.substr(strlen("FROM") + 1);
+            try
+            {
+                from = Time::stringToTime(&fromStr);
+            }
+            catch (std::exception &e)
             {
                 mask |= FROM;
-                strcpy(fromStr, "");
+                fromStr = "time";
             }
         }
         else if (line.rfind("TO", 0) == 0)
         {
             mask |= TO;
-            strcpy(toStr, line.substr(strlen("TO") + 1).c_str());
-            to = getTime(toStr);
-            if (to == -1)
+            toStr = line.substr(strlen("TO") + 1);
+            try
+            {
+                to = Time::stringToTime(&toStr);
+            }
+            catch (std::exception &e)
             {
                 mask |= TO;
-                strcpy(toStr, "");
+                toStr = "time";
             }
         }
     }

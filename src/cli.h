@@ -7,11 +7,9 @@ class Cli
 {
     uint8_t mask = 0b00000000;
     std::regex regex;
-    std::string regexStr;
-    time_t from, to;
-    char fromStr[32], toStr[32];
+    std::string regexStr, fromStr, toStr;
+    std::chrono::system_clock::time_point from, to;
 
-    time_t getTime(char *str);
     void saveState();
     void loadState();
 

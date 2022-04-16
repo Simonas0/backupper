@@ -158,6 +158,7 @@ void Backupper::copy(std::string *from, std::string *to)
 				   {
 					   bool existed = std::filesystem::exists(to);
 					   std::filesystem::copy(from, to, std::filesystem::copy_options::overwrite_existing);
+					   (*logger).log(&from, Action::backup);
 					   (*logger).log(&to, existed ? Action::alter : Action::create); },
 				   logger, *from, *to));
 }

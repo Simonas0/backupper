@@ -12,12 +12,6 @@ class Backupper
 {
 	Logger *logger;
 
-	struct File
-	{
-		char *path;
-		std::time_t lastMod;
-	};
-
 	char *hotDir;
 	char *bakDir;
 
