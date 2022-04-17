@@ -3,7 +3,7 @@ SRC_DIR := src
 BIN_DIR := build
 
 main: ${SRC_DIR}/main.cpp ${BIN_DIR}/backupper.o ${BIN_DIR}/logger.o ${BIN_DIR}/cli.o ${BIN_DIR}/time.o ${SRC_DIR}/debug.h
-	${CC} -o main ${SRC_DIR}/main.cpp ${BIN_DIR}/backupper.o ${BIN_DIR}/logger.o ${BIN_DIR}/cli.o ${BIN_DIR}/time.o
+	${CC} -o backupper ${SRC_DIR}/main.cpp ${BIN_DIR}/backupper.o ${BIN_DIR}/logger.o ${BIN_DIR}/cli.o ${BIN_DIR}/time.o
 
 ${BIN_DIR}/backupper.o: ${SRC_DIR}/backupper.h ${SRC_DIR}/backupper.cpp ${SRC_DIR}/logger.h ${SRC_DIR}/debug.h
 	mkdir -p ${BIN_DIR}
@@ -22,4 +22,4 @@ ${BIN_DIR}/time.o: ${SRC_DIR}/time.h ${SRC_DIR}/time.cpp
 	${CC} -c ${SRC_DIR}/time.cpp -o ${BIN_DIR}/time.o
 
 clean:
-	rm -r ${BIN_DIR} main
+	rm -r ${BIN_DIR} backupper

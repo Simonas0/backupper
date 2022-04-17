@@ -59,7 +59,7 @@ Cli::Cli(Logger &logger)
             system("stty -raw echo");
 
             // decide what to do
-            switch (c)
+            switch (tolower(c))
             {
             case 'a':
                 mask ^= ALTERED;
