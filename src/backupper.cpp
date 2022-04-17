@@ -18,13 +18,10 @@
 
 using namespace std::chrono_literals;
 
-Backupper::Backupper(char *hot, char *bak, Logger *logger)
+Backupper::Backupper(std::string const &hot, std::string const &bak, Logger &logger)
+	: hotDir(hot), bakDir(bak), logger(logger)
 {
 	DEBUG_MSG("Starting backupper");
-
-	hotDir = hot;
-	bakDir = bak;
-	this->logger = logger;
 
 	intfd = eventfd(0, 0);
 
@@ -37,7 +34,7 @@ Backupper::Backupper(char *hot, char *bak, Logger *logger)
 			hotEvent.data.fd = inotify_init1(IN_NONBLOCK);
 			intEvent.data.fd = intfd;
 
-			inotify_add_watch(hotEvent.data.fd, hotDir, IN_CLOSE_WRITE | IN_MOVED_TO);
+			inotify_add_watch(hotEvent.data.fd, hotDir.c_str(), IN_CLOSE_WRITE | IN_MOVED_TO);
 
 			auto epfd = epoll_create1(0);
 			epoll_ctl(epfd, EPOLL_CTL_ADD, hotEvent.data.fd, &hotEvent);
@@ -73,16 +70,15 @@ Backupper::Backupper(char *hot, char *bak, Logger *logger)
 								if (strncmp(event->name, DEL_PFX, strlen(DEL_PFX)) == 0)
 								{
 
-									remove(&std::string(hotDir).append(event->name));
-									remove(
-										&std::string(bakDir)
-											 .append(&event->name[strlen(DEL_PFX)])
-											 .append(BAK_EXT));
+									remove(std::string(hotDir).append(event->name));
+									remove(std::string(bakDir)
+											   .append(&event->name[strlen(DEL_PFX)])
+											   .append(BAK_EXT));
 								}
 								else
 								{
-									copy(&std::string(hotDir).append(event->name),
-										 &std::string(bakDir).append(event->name).append(BAK_EXT));
+									copy(std::string(hotDir).append(event->name),
+										 std::string(bakDir).append(event->name).append(BAK_EXT));
 								}
 							}
 						}
@@ -135,7 +131,7 @@ Backupper::~Backupper()
 	watcherFut.get();
 }
 
-void Backupper::remove(std::string *path)
+void Backupper::remove(std::string const &path)
 {
 	DEBUG_MSG("Deleting " << *path);
 
@@ -144,12 +140,12 @@ void Backupper::remove(std::string *path)
 				   {
 					   if (std::filesystem::remove(path))
 					   {
-						   (*logger).log(&path, delete_);
+						   (*logger).log(path, delete_);
 						   } },
-				   logger, *path));
+				   &logger, path));
 }
 
-void Backupper::copy(std::string *from, std::string *to)
+void Backupper::copy(std::string const &from, std::string const &to)
 {
 	DEBUG_MSG("Backing up " << *from << " to " << *to);
 
@@ -158,7 +154,7 @@ void Backupper::copy(std::string *from, std::string *to)
 				   {
 					   bool existed = std::filesystem::exists(to);
 					   std::filesystem::copy(from, to, std::filesystem::copy_options::overwrite_existing);
-					   (*logger).log(&from, Action::backup);
-					   (*logger).log(&to, existed ? Action::alter : Action::create); },
-				   logger, *from, *to));
+					   (*logger).log(from, Action::backup);
+					   (*logger).log(to, existed ? Action::alter : Action::create); },
+				   &logger, from, to));
 }

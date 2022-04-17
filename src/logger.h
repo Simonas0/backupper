@@ -23,11 +23,11 @@ class Logger
 
 public:
     Logger();
-    void log(std::string *path, Action action);
+    void log(std::string const &path, const Action action);
     void printLog(
-        uint8_t mask, std::regex regex,
-        std::chrono::system_clock::time_point from,
-        std::chrono::system_clock::time_point to);
+        uint8_t mask, std::regex const &regex,
+        std::chrono::system_clock::time_point const &from,
+        std::chrono::system_clock::time_point const &to);
 };
 
 #endif

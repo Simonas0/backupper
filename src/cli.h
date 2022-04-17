@@ -14,7 +14,7 @@ class Cli
     void loadState();
 
 public:
-    Cli(Logger *logger);
+    Cli(Logger &logger);
 };
 
 #endif

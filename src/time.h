@@ -5,8 +5,8 @@
 
 namespace Time
 {
-    std::chrono::system_clock::time_point stringToTime(std::string *str);
-    std::string timeToString(std::chrono::system_clock::time_point *time);
+    std::chrono::system_clock::time_point stringToTime(std::string const &str);
+    std::string timeToString(std::chrono::system_clock::time_point const &time);
 }
 
 #endif

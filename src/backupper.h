@@ -10,21 +10,21 @@
 
 class Backupper
 {
-	Logger *logger;
+	Logger &logger;
 
-	char *hotDir;
-	char *bakDir;
+	std::string const &hotDir;
+	std::string const &bakDir;
 
 	int intfd;
 
 	std::future<void> watcherFut;
 	std::vector<std::future<void>> futures;
 
-	void remove(std::string *path);
-	void copy(std::string *from, std::string *to);
+	void remove(std::string const &path);
+	void copy(std::string const &from, std::string const &to);
 
 public:
-	Backupper(char *hot, char *bak, Logger *logger);
+	Backupper(std::string const &hot, std::string const &bak, Logger &logger);
 	~Backupper();
 };
 

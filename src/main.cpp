@@ -14,16 +14,15 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	std::filesystem::path hotDir(argv[1]);
-	std::filesystem::path bakDir(argv[2]);
+	std::string hot(argv[1]), bak(argv[2]);
 
-	if (!std::filesystem::is_directory(hotDir))
+	if (!std::filesystem::is_directory(hot))
 	{
 		std::cerr << "Hot folder path does not refer to directory." << std::endl;
 		return -1;
 	}
 
-	if (!std::filesystem::is_directory(bakDir))
+	if (!std::filesystem::is_directory(bak))
 	{
 		std::cerr << "Backup folder path does not refer to directory." << std::endl;
 		return -1;
@@ -33,10 +32,10 @@ int main(int argc, char *argv[])
 	Logger logger;
 
 	// start backupper
-	Backupper backupper(argv[1], argv[2], &logger);
+	Backupper backupper(hot, bak, logger);
 
 	// start cli
-	Cli cli(&logger);
+	Cli cli(logger);
 
 	return 0;
 }

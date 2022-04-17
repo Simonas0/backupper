@@ -12,19 +12,19 @@
 #define BOLD "\e[1m"
 #define NORMAL "\e[0m"
 
-Cli::Cli(Logger *logger)
+Cli::Cli(Logger &logger)
 {
     loadState();
 
     while (true)
     {
         // print logs
-        (*logger).printLog(mask, regex, from, to);
+        logger.printLog(mask, regex, from, to);
 
         // prepare displayed variables
         if ((mask & FROM) == FROM)
         {
-            fromStr = Time::timeToString(&from);
+            fromStr = Time::timeToString(from);
         }
         else
         {
@@ -32,7 +32,7 @@ Cli::Cli(Logger *logger)
         }
         if ((mask & TO) == TO)
         {
-            toStr = Time::timeToString(&to);
+            toStr = Time::timeToString(to);
         }
         else
         {
@@ -107,7 +107,7 @@ Cli::Cli(Logger *logger)
                         std::cin >> fromStr;
                         try
                         {
-                            from = Time::stringToTime(&fromStr);
+                            from = Time::stringToTime(fromStr);
                         }
                         catch (std::exception &e)
                         {
@@ -128,7 +128,7 @@ Cli::Cli(Logger *logger)
                         std::cin >> toStr;
                         try
                         {
-                            to = Time::stringToTime(&toStr);
+                            to = Time::stringToTime(toStr);
                         }
                         catch (std::exception &e)
                         {
@@ -235,7 +235,7 @@ void Cli::loadState()
             fromStr = line.substr(strlen("FROM") + 1);
             try
             {
-                from = Time::stringToTime(&fromStr);
+                from = Time::stringToTime(fromStr);
             }
             catch (std::exception &e)
             {
@@ -249,7 +249,7 @@ void Cli::loadState()
             toStr = line.substr(strlen("TO") + 1);
             try
             {
-                to = Time::stringToTime(&toStr);
+                to = Time::stringToTime(toStr);
             }
             catch (std::exception &e)
             {

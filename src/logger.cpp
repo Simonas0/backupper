@@ -11,21 +11,18 @@ Logger::Logger()
     logFile.open(FILE_NAME, std::ofstream::app);
 }
 
-void Logger::log(std::string *path, Action action)
+void Logger::log(std::string const &path, const Action action)
 {
-    auto time = std::time(nullptr);
-    char buf[32];
-
-    strftime(buf, sizeof(buf), "%FT%TZ", std::gmtime(&time));
 
     logFileMutex.lock();
-    logFile << buf << ' ' << (char)action << ' ' << *path << std::endl;
+    logFile << Time::timeToString(std::chrono::system_clock::now())
+            << ' ' << (char)action << ' ' << path << std::endl;
     logFileMutex.unlock();
 }
 
-void Logger::printLog(uint8_t mask, std::regex regex,
-                      std::chrono::system_clock::time_point from,
-                      std::chrono::system_clock::time_point to)
+void Logger::printLog(uint8_t mask, std::regex const &regex,
+                      std::chrono::system_clock::time_point const &from,
+                      std::chrono::system_clock::time_point const &to)
 {
     std::fstream logFile(FILE_NAME);
     std::string line;
@@ -38,7 +35,17 @@ void Logger::printLog(uint8_t mask, std::regex regex,
         auto timeStr = line.substr(0, idx++);
         auto action = line.at(idx);
         auto name = line.substr(line.rfind('/') + 1);
-        auto time = Time::stringToTime(&timeStr);
+        std::chrono::system_clock::time_point time;
+
+        try
+        {
+            time = Time::stringToTime(timeStr);
+        }
+        catch (std::exception &e)
+        {
+            std::cerr << "Cannot parse time from line: " << line << std::endl;
+            continue;
+        }
 
         switch (action)
         {
@@ -67,6 +74,7 @@ void Logger::printLog(uint8_t mask, std::regex regex,
             }
             break;
         default:
+            std::cerr << "Cannot parse action from line: " << line << std::endl;
             continue;
         }
 
