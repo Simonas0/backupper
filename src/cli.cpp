@@ -55,7 +55,7 @@ Cli::Cli(Logger &logger)
         {
             // wait for input
             system("stty raw -echo");
-            char c = getchar();
+            const char c = getchar();
             system("stty -raw echo");
 
             // decide what to do
@@ -109,7 +109,7 @@ Cli::Cli(Logger &logger)
                         {
                             from = Time::stringToTime(fromStr);
                         }
-                        catch (std::exception &e)
+                        catch (const std::exception &e)
                         {
                             std::cout << e.what() << std::endl;
                             continue;
@@ -130,7 +130,7 @@ Cli::Cli(Logger &logger)
                         {
                             to = Time::stringToTime(toStr);
                         }
-                        catch (std::exception &e)
+                        catch (const std::exception &e)
                         {
                             std::cout << e.what() << std::endl;
                             continue;
@@ -237,7 +237,7 @@ void Cli::loadState()
             {
                 from = Time::stringToTime(fromStr);
             }
-            catch (std::exception &e)
+            catch (const std::exception &e)
             {
                 mask |= FROM;
                 fromStr = "time";
@@ -251,7 +251,7 @@ void Cli::loadState()
             {
                 to = Time::stringToTime(toStr);
             }
-            catch (std::exception &e)
+            catch (const std::exception &e)
             {
                 mask |= TO;
                 toStr = "time";

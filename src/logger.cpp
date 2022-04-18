@@ -27,21 +27,23 @@ void Logger::printLog(uint8_t mask, std::regex const &regex,
     std::fstream logFile(FILE_NAME);
     std::string line;
 
+    std::cout << "---- Start of results ----" << std::endl;
+
     logFileMutex.lock();
 
     while (std::getline(logFile, line))
     {
-        auto idx = line.find(' ');
-        auto timeStr = line.substr(0, idx++);
-        auto action = line.at(idx);
-        auto name = line.substr(line.rfind('/') + 1);
+        const auto idx = line.find(' ');
+        const auto timeStr = line.substr(0, idx);
+        const auto action = line.at(idx + 1);
+        const auto name = line.substr(line.rfind('/') + 1);
         std::chrono::system_clock::time_point time;
 
         try
         {
             time = Time::stringToTime(timeStr);
         }
-        catch (std::exception &e)
+        catch (const std::exception &e)
         {
             std::cerr << "Cannot parse time from line: " << line << std::endl;
             continue;
@@ -89,4 +91,6 @@ void Logger::printLog(uint8_t mask, std::regex const &regex,
     }
 
     logFileMutex.unlock();
+
+    std::cout << "----  End of results  ----" << std::endl;
 }

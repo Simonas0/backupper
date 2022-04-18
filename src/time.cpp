@@ -8,7 +8,7 @@ std::chrono::system_clock::time_point Time::stringToTime(std::string const &str)
 {
     tm tm;
     std::stringstream(str) >> std::get_time(&tm, ISO_TIME);
-    auto time = std::mktime(&tm);
+    const auto time = std::mktime(&tm);
 
     if (time == -1)
     {
@@ -20,7 +20,7 @@ std::chrono::system_clock::time_point Time::stringToTime(std::string const &str)
 std::string Time::timeToString(std::chrono::system_clock::time_point const &time)
 {
     char buf[32];
-    auto time_ = std::chrono::system_clock::to_time_t(time);
+    const auto time_ = std::chrono::system_clock::to_time_t(time);
     std::strftime(buf, sizeof(buf), ISO_TIME, gmtime(&time_));
     return std::string(buf);
 }
