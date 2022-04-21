@@ -1,5 +1,5 @@
-#include <chrono>
 #include <string>
+#include <thread>
 
 #include <errno.h>
 #include <string.h>
@@ -10,11 +10,13 @@
 
 #include "backupper.h"
 #include "debug.h"
+#include "time.h"
 
 #define BAK_EXT ".bak"
 #define BUF_SIZE 4096
 #define DEL_PFX "delete_"
 #define MAX_EVENTS 10
+#define PENDING_FILE "pending"
 
 using namespace std::chrono_literals;
 
@@ -29,6 +31,15 @@ Backupper::Backupper(std::string const &hot, std::string const &bak, Logger &log
 	{
 		perror("eventfd");
 		exit(EXIT_FAILURE);
+	}
+
+	std::ifstream pending(PENDING_FILE);
+	std::string line;
+
+	while (std::getline(pending, line))
+	{
+		const auto idx = line.find(' ');
+		remove(line.substr(idx + 1), Time::stringToTime(line.substr(0, idx)));
 	}
 
 	watcherFut = std::async(
@@ -98,12 +109,6 @@ Backupper::Backupper(std::string const &hot, std::string const &bak, Logger &log
 					{
 						len = read(hotEvent.data.fd, buf, sizeof(buf));
 
-						if (len == -1)
-						{
-							perror("read");
-							exit(EXIT_FAILURE);
-						}
-
 						if (len >= 0)
 						{
 							for (
@@ -113,6 +118,18 @@ Backupper::Backupper(std::string const &hot, std::string const &bak, Logger &log
 							{
 								if (strncmp(event->name, DEL_PFX, strlen(DEL_PFX)) == 0)
 								{
+									std::string nameWoPfx = &event->name[strlen(DEL_PFX)];
+									auto idx = nameWoPfx.find('_');
+
+									if (idx != std::string::npos)
+									{
+										auto time = Time::stringToTime(nameWoPfx.substr(0, idx));
+										remove(std::string(hotDir).append(event->name), time);
+										remove(std::string(bakDir)
+												   .append(nameWoPfx.substr(idx + 1))
+												   .append(BAK_EXT),
+											   time);
+									}
 
 									remove(std::string(hotDir).append(event->name));
 									remove(std::string(bakDir)
@@ -132,27 +149,22 @@ Backupper::Backupper(std::string const &hot, std::string const &bak, Logger &log
 							{
 								break;
 							}
+							else
+							{
+								perror("read");
+								exit(EXIT_FAILURE);
+							}
 						}
 					}
 				}
 
 				if (intAvailForRead)
 				{
-					len = read(intEvent.data.fd, buf, sizeof(buf));
-
-					if (len == -1)
-					{
-						perror("read");
-						exit(EXIT_FAILURE);
-					}
-
-					if (len > 0)
-					{
-						break;
-					}
+					break;
 				}
 
 				// clean up futures periodically
+
 				for (auto future = futures.begin(); future != futures.end();)
 				{
 					if (future->wait_for(0s) == std::future_status::ready)
@@ -164,6 +176,18 @@ Backupper::Backupper(std::string const &hot, std::string const &bak, Logger &log
 						++future;
 					}
 				}
+
+				for (auto op = pendingOps.begin(); op != pendingOps.end();)
+				{
+					if (op->future.wait_for(0s) == std::future_status::ready)
+					{
+						op = pendingOps.erase(op);
+					}
+					else
+					{
+						++op;
+					}
+				}
 			}
 
 			// make sure all asynchronous operations finished before exiting
@@ -171,13 +195,24 @@ Backupper::Backupper(std::string const &hot, std::string const &bak, Logger &log
 			{
 				future->get();
 			}
+
+			// save pending files
+			std::ofstream pending(PENDING_FILE);
+			deleteFuturesMutex.lock();
+			for (auto op = pendingOps.begin(); op != pendingOps.end(); ++op)
+			{
+				if (op->future.wait_for(0s) != std::future_status::ready)
+				{
+					pending << Time::timeToString(op->time) << " " << op->path << std::endl;
+				}
+			}
 		});
 }
 
 Backupper::~Backupper()
 {
 	DEBUG_MSG("Stopping backupper");
-	// any writing to intfd will stop backupper
+	// any writing to intfd will stop main loop
 
 	if (write(intfd, "whatever", 8) == -1)
 	{
@@ -185,6 +220,10 @@ Backupper::~Backupper()
 		exit(EXIT_FAILURE);
 	}
 	watcherFut.get();
+
+	// stopping deferred deletion threads
+	std::unique_lock<std::mutex> lock(stopFlagMutex);
+	stopCV.notify_all();
 }
 
 void Backupper::remove(std::string const &path)
@@ -199,6 +238,30 @@ void Backupper::remove(std::string const &path)
 						   (*logger).log(path, delete_);
 						   } },
 				   &logger, path));
+}
+
+void Backupper::remove(std::string const &path, std::chrono::system_clock::time_point const &time)
+{
+	pendingOps.push_back(PendingOp{
+		.future = std::async([](Logger *logger, std::string path,
+								std::chrono::system_clock::time_point const &time, std::mutex *pendingMutex,
+								std::mutex *stopMutex, std::condition_variable *cv)
+							 {
+								std::unique_lock<std::mutex> lock(*stopMutex);
+								if((*cv).wait_until(lock, time) == std::cv_status::no_timeout)
+								{
+									return;
+								}
+
+								 (*pendingMutex).lock();
+								 if (std::filesystem::remove(path))
+								 {
+									 (*logger).log(path, delete_);
+							 }
+							 (*pendingMutex).unlock(); },
+							 &logger, path, time, &deleteFuturesMutex, &stopFlagMutex, &stopCV),
+		.path = path,
+		.time = time});
 }
 
 void Backupper::copy(std::string const &from, std::string const &to)

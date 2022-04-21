@@ -24,7 +24,7 @@ void Logger::printLog(uint8_t mask, std::regex const &regex,
                       std::chrono::system_clock::time_point const &from,
                       std::chrono::system_clock::time_point const &to)
 {
-    std::fstream logFile(FILE_NAME);
+    std::ifstream logFile(FILE_NAME);
     std::string line;
 
     std::cout << "---- Start of results ----" << std::endl;

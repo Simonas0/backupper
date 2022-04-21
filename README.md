@@ -4,9 +4,11 @@ A file back-up utility with asynchronous I/O for Linux.
 # Features
 - Backs up files from one directory into another as they are modified
 - Deletes files from both directories, if file is prefixed with "delete_"
+- Schedules file deletion for later time, if file is prefixed with "delete_ISODATETIME_"
 - Logs all actions
 - Displays and filters logs based on action, filename regex and time
 - Preserves filter state between application reboots
+- Preserves file list scheduled for deletion
 
 # Building
 Prerequisites:
