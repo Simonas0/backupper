@@ -24,7 +24,7 @@ Cli::Cli(Logger &logger)
         // prepare displayed variables
         if ((mask & FROM) == FROM)
         {
-            fromStr = Time::timeToString(from);
+            fromStr = Time::timeToString(from, true);
         }
         else
         {
@@ -32,7 +32,7 @@ Cli::Cli(Logger &logger)
         }
         if ((mask & TO) == TO)
         {
-            toStr = Time::timeToString(to);
+            toStr = Time::timeToString(to, true);
         }
         else
         {
@@ -107,7 +107,7 @@ Cli::Cli(Logger &logger)
                         std::cin >> fromStr;
                         try
                         {
-                            from = Time::stringToTime(fromStr);
+                            from = Time::stringToTime(fromStr, true);
                         }
                         catch (const std::exception &e)
                         {
@@ -128,7 +128,7 @@ Cli::Cli(Logger &logger)
                         std::cin >> toStr;
                         try
                         {
-                            to = Time::stringToTime(toStr);
+                            to = Time::stringToTime(toStr, true);
                         }
                         catch (const std::exception &e)
                         {
@@ -183,11 +183,11 @@ void Cli::saveState()
     }
     if ((mask & FROM) == FROM)
     {
-        file << "FROM " << fromStr << std::endl;
+        file << "FROM " << Time::timeToString(from) << std::endl;
     }
     if ((mask & TO) == TO)
     {
-        file << "TO " << toStr << std::endl;
+        file << "TO " << Time::timeToString(to) << std::endl;
     }
 }
 
@@ -236,6 +236,7 @@ void Cli::loadState()
             try
             {
                 from = Time::stringToTime(fromStr);
+                fromStr = Time::timeToString(from, true);
             }
             catch (const std::exception &e)
             {
@@ -250,6 +251,7 @@ void Cli::loadState()
             try
             {
                 to = Time::stringToTime(toStr);
+                toStr = Time::timeToString(to, true);
             }
             catch (const std::exception &e)
             {

@@ -4,11 +4,11 @@
 
 #define ISO_TIME "%Y-%m-%dT%TZ"
 
-std::chrono::system_clock::time_point Time::stringToTime(std::string const &str)
+std::chrono::system_clock::time_point Time::stringToTime(std::string const &str, bool const localTime)
 {
     tm tm;
     std::stringstream(str) >> std::get_time(&tm, ISO_TIME);
-    const auto time = std::mktime(&tm);
+    const auto time = localTime ? std::mktime(&tm) : std::mktime(&tm) - timezone;
 
     if (time == -1)
     {
@@ -17,10 +17,10 @@ std::chrono::system_clock::time_point Time::stringToTime(std::string const &str)
     return std::chrono::system_clock::from_time_t(time);
 }
 
-std::string Time::timeToString(std::chrono::system_clock::time_point const &time)
+std::string Time::timeToString(std::chrono::system_clock::time_point const &time, bool const localTime)
 {
     char buf[32];
     const auto time_ = std::chrono::system_clock::to_time_t(time);
-    std::strftime(buf, sizeof(buf), ISO_TIME, gmtime(&time_));
+    std::strftime(buf, sizeof(buf), ISO_TIME, localTime ? localtime(&time_) : gmtime(&time_));
     return std::string(buf);
 }

@@ -87,7 +87,7 @@ void Logger::printLog(uint8_t mask, std::regex const &regex,
             continue;
         }
 
-        std::cout << line << std::endl;
+        std::cout << Time::timeToString(time, true) << line.substr(idx) << std::endl;
     }
 
     logFileMutex.unlock();

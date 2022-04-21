@@ -121,20 +121,24 @@ Backupper::Backupper(std::string const &hot, std::string const &bak, Logger &log
 									std::string nameWoPfx = &event->name[strlen(DEL_PFX)];
 									auto idx = nameWoPfx.find('_');
 
+									DEBUG_MSG("Time to delete " << nameWoPfx.substr(0, idx));
+
 									if (idx != std::string::npos)
 									{
-										auto time = Time::stringToTime(nameWoPfx.substr(0, idx));
+										auto time = Time::stringToTime(nameWoPfx.substr(0, idx), true);
 										remove(std::string(hotDir).append(event->name), time);
 										remove(std::string(bakDir)
 												   .append(nameWoPfx.substr(idx + 1))
 												   .append(BAK_EXT),
 											   time);
 									}
-
-									remove(std::string(hotDir).append(event->name));
-									remove(std::string(bakDir)
-											   .append(&event->name[strlen(DEL_PFX)])
-											   .append(BAK_EXT));
+									else
+									{
+										remove(std::string(hotDir).append(event->name));
+										remove(std::string(bakDir)
+												   .append(&event->name[strlen(DEL_PFX)])
+												   .append(BAK_EXT));
+									}
 								}
 								else
 								{
